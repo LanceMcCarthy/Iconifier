@@ -177,7 +177,8 @@ jobs:
     steps:
       - name: Download Artifacts
         uses: actions/download-artifact@v4
-        pattern: Iconifier
+        with:
+          pattern: Iconifier
 
       - name: Install zip tools
         run: |
