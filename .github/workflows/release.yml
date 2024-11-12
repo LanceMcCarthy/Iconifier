@@ -1,0 +1,206 @@
+name: Build Console App
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "releases/*"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  proj_path: src/Iconifier/Iconifier.csproj
+  NOTARYTOOL_CREDENTIAL_NAME: "notarytool-password"
+  MACOS_DMG_FILENAME: "Iconifier.dmg"
+  APPLE_CERTIFICATE_NAME: "Lancelot Software, LLC (L65255N3F7)"
+  APPLE_DEVELOPER_TEAM_NAME: "Lancelot Software, LLC"
+  APPLE_DEVELOPER_TEAM_ID: "L65255N3F7"
+
+jobs:
+  shared-resources:
+    runs-on: ubuntu-22.04
+    outputs:
+      tag_prefix: ${{steps.tag-creator.outputs.tag_prefix}}
+    steps:
+    - name: Generate tag prefix
+      id: tag-creator
+      run: |
+        buildDay=`date +%Y.%m.%d`
+        tags="$buildDay.$GITHUB_RUN_NUMBER"
+        echo "tag_prefix=$tags" >> $GITHUB_OUTPUT
+
+  windows_linux:
+    name: Build Windows and Linux Apps
+    runs-on: windows-latest
+    needs: [shared-resources]
+    if: needs.shared-resources.outputs.tag_prefix != ''
+    strategy:
+      matrix:
+        RID: [win-x64,win-arm64,linux-x64,linux-arm64]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Build Solution
+      run: dotnet publish ${{env.proj_path}} -r ${{matrix.RID}} --no-self-contained -o ${{github.workspace}}/output
+
+    # Login to Azure CLI. No secrets needed! This uses the GitHub OIDC token to authenticate.
+    - name: Azure login using OIDC via GitHub
+      uses: azure/login@v2
+      id: azlogin
+      with:
+        client-id: "32daa13b-f4bb-4809-8ef6-58cb39051acd"
+        tenant-id: "bd47e796-3473-4b8a-9101-1f4c0c7af31a"
+        subscription-id: "48ab4839-62af-4ab3-afe6-043ea4d7c137"
+
+    - name: Sign files with Trusted Signing
+      uses: azure/trusted-signing-action@v0.5.0
+      with:
+        endpoint: https://eus.codesigning.azure.net/
+        trusted-signing-account-name: PrimaryCodeSign
+        certificate-profile-name: lancemccarthylivepublic
+        timestamp-rfc3161: http://timestamp.acs.microsoft.com
+        timestamp-digest: SHA256
+        file-digest: SHA256
+        files: ${{github.workspace}}/output
+        exclude-azure-cli-credential: false
+        exclude-environment-credential: true
+        exclude-workload-identity-credential: true
+        exclude-managed-identity-credential: true
+        exclude-shared-token-cache-credential: true
+        exclude-visual-studio-credential: true
+        exclude-visual-studio-code-credential: true
+        exclude-azure-powershell-credential: true
+        exclude-azure-developer-cli-credential: true
+        exclude-interactive-browser-credential: true
+
+    - name: Attach artifacts to workflow run
+      uses: actions/upload-artifact@v4
+      with:     
+        name: "Iconifier_${{matrix.RID}}" 
+        path: ${{github.workspace}}/output
+        if-no-files-found: error
+        retention-days: 30
+
+  build_macos:
+    name: Build macOS App
+    runs-on: macos-latest
+    needs: [shared-resources]
+    if: needs.shared-resources.outputs.tag_prefix != ''
+    strategy:
+      matrix:
+        RID: [osx-x64,osx-arm64]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Build Solution
+      run: dotnet publish ${{env.proj_path}} -r ${{matrix.RID}} -o ${{github.workspace}}/output
+
+    - name: Confirm build result files
+      run: ls -R ${{github.workspace}}/output
+
+    - name: Get Static Secrets
+      id: akeyless
+      uses: LanceMcCarthy/akeyless-action@v3
+      with:
+        access-id: "p-fq3qbjjxv839" 
+        static-secrets: |
+          {
+            "/personal-keys/mccarthy/lance-apple-cert-developerid-distribution-base64": "APPLE_DEVELOPER_CERTIFICATE_P12_BASE64",
+            "/personal-keys/mccarthy/lance-apple-certificate-password": "APPLE_DEVELOPER_CERTIFICATE_PASSWORD",
+            "/personal-keys/mccarthy/lance-apple-account-username": "APPLE_ACCOUNT_EMAIL",
+            "/personal-keys/mccarthy/lance-apple-account-pat": "APPLE_ACCOUNT_APP_SPECIFIC_PASSWORD"
+          }
+        export-secrets-to-environment: false
+
+    - name: Import Code-Signing Certificates
+      uses: Apple-Actions/import-codesign-certs@v3
+      with:
+        p12-file-base64: "${{steps.akeyless.outputs.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64}}"
+        p12-password: "${{steps.akeyless.outputs.APPLE_DEVELOPER_CERTIFICATE_PASSWORD}}"
+
+    - name: Sign the binary before packing DMG
+      run: 
+        cd ${{github.workspace}}/output
+        /usr/bin/codesign --force --verify --deep --verbose --sign "${{env.APPLE_CERTIFICATE_NAME}}" --options runtime -v "Iconifier"
+
+    - name: Store notarytool credentials
+      run: xcrun notarytool store-credentials ${{env.NOTARYTOOL_CREDENTIAL_NAME}} --apple-id ${{steps.akeyless.outputs.APPLE_ACCOUNT_EMAIL}} --team-id ${{env.APPLE_DEVELOPER_TEAM_ID}} --password ${{steps.akeyless.outputs.APPLE_ACCOUNT_APP_SPECIFIC_PASSWORD}}
+
+    - name: Install tool (create-dmg)
+      run: brew install create-dmg
+
+    # docs https://github.com/create-dmg/create-dmg
+    - name: Create, sign, notarize, and staple the DMG.
+      id: create-dmg
+      run: |
+        create-dmg \
+          --codesign "${{env.APPLE_CERTIFICATE_NAME}}" \
+          --notarize "${{env.NOTARYTOOL_CREDENTIAL_NAME}}" \
+          --volname "Iconifier v${{needs.shared-resources.app_version}}" \
+          --window-size 500 450 \
+          --icon-size 80 \
+          --icon "Iconifier" 250 100 \
+          "${{env.MACOS_DMG_FILENAME}}" \
+          "${{github.workspace}}/output"
+
+    - name: Attach artifacts to workflow run
+      uses: actions/upload-artifact@v4
+      with:     
+        name: "Iconifier_${{matrix.RID}}" 
+        path: ${{github.workspace}}/${{env.MACOS_DMG_FILENAME}}
+        if-no-files-found: error
+        retention-days: 30
+
+  create_release:
+    name: Create Release
+    needs: [build_macos, build_windows_linux]
+    if: ${{success()}}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        pattern: Iconifier
+
+      - name: Install zip tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install zip
+
+      - name: Prepare zip files for release publishing
+        run: |
+          for name in "Iconifier_win-x64" "Iconifier_win-arm64" "Iconifier_linux-x64" "Iconifier_linux-arm64" "Iconifier_osx-x64" "Iconifier_osx-arm64"; do
+              zip -r "$name.zip" "$name"
+          done
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{needs.shared-resources.app_version}}"
+          tag_name: "${{needs.shared-resources.app_version}}"
+          prerelease: true # DELETE ME
+          fail_on_unmatched_files: true
+          files: |
+            Iconifier_win-x64.zip
+            Iconifier_win-arm64.zip
+            Iconifier_linux-x64.zip
+            Iconifier_linux-arm64.zip
+            Iconifier_osx-x64.zip
+            Iconifier_osx-arm64.zip
