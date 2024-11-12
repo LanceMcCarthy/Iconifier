@@ -31,7 +31,7 @@ jobs:
         tags="$buildDay.$GITHUB_RUN_NUMBER"
         echo "tag_prefix=$tags" >> $GITHUB_OUTPUT
 
-  windows_linux:
+  build_windows_linux:
     name: Build Windows and Linux Apps
     runs-on: windows-latest
     needs: [shared-resources]
