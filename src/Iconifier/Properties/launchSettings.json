@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Iconifier": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
