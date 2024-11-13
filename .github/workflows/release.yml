@@ -1,4 +1,4 @@
-name: Build Console App
+name: Release Iconifier
 
 on:
   workflow_dispatch:
@@ -82,10 +82,10 @@ jobs:
         dotnet-version: ${{env.DOTNET_VERSION}}
 
     - name: Build Solution
-      run: dotnet publish ${{env.proj_path}} -r ${{matrix.RID}} --no-self-contained -o "${{github.workspace}}\output"
+      run: dotnet publish ${{env.proj_path}} -r ${{matrix.RID}} --no-self-contained -o '${{github.workspace}}\output'
 
     - name: Confirm build output
-      run: ls -R "${{github.workspace}}\output"
+      run: ls -R '${{github.workspace}}\output'
 
     # Login to Azure CLI. No secrets needed! This uses the GitHub OIDC token to authenticate.
     - name: Azure login using OIDC via GitHub
@@ -105,7 +105,7 @@ jobs:
         timestamp-rfc3161: http://timestamp.acs.microsoft.com
         timestamp-digest: SHA256
         file-digest: SHA256
-        files: "${{github.workspace}}\output"
+        files: '${{github.workspace}}\output'
         exclude-azure-cli-credential: false
         exclude-environment-credential: true
         exclude-workload-identity-credential: true
@@ -121,7 +121,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:     
         name: "Iconifier_${{matrix.RID}}" 
-        path: "${{github.workspace}}\output"
+        path: '${{github.workspace}}\output'
         if-no-files-found: error
         retention-days: 30
 
