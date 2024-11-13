@@ -105,7 +105,8 @@ jobs:
         timestamp-rfc3161: http://timestamp.acs.microsoft.com
         timestamp-digest: SHA256
         file-digest: SHA256
-        files: '${{github.workspace}}\output'
+        files-folder: '${{github.workspace}}\output'
+        files-folder-filter: dll,exe
         exclude-azure-cli-credential: false
         exclude-environment-credential: true
         exclude-workload-identity-credential: true
@@ -195,7 +196,7 @@ jobs:
           --volname "Iconifier v${{needs.shared-resources.app_version}}" \
           --window-size 500 450 \
           --icon-size 80 \
-          --icon "Iconifier" 250 100 \
+          --icon "Iconifier.zip" 250 100 \
           "${{env.MACOS_DMG_FILENAME}}" \
           "${{github.workspace}}/Iconifier.zip"
 
