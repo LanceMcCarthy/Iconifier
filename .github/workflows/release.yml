@@ -11,6 +11,7 @@ permissions:
   contents: read
 
 env:
+  DOTNET_VERSION: '9.0.x'
   proj_path: src/Iconifier/Iconifier.csproj
   NOTARYTOOL_CREDENTIAL_NAME: "notarytool-password"
   MACOS_DMG_FILENAME: "Iconifier.dmg"
@@ -48,7 +49,7 @@ jobs:
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: ${{env.DOTNET_VERSION}}
 
     - name: Build Solution
       run: dotnet publish ${{env.proj_path}} -r ${{matrix.RID}} --no-self-contained -o ${{github.workspace}}/output
@@ -78,7 +79,7 @@ jobs:
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: ${{env.DOTNET_VERSION}}
 
     - name: Build Solution
       run: dotnet publish ${{env.proj_path}} -r ${{matrix.RID}} --no-self-contained -o ${{github.workspace}}/output
@@ -138,13 +139,19 @@ jobs:
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: ${{env.DOTNET_VERSION}}
 
     - name: Build Solution
       run: dotnet publish ${{env.proj_path}} -r ${{matrix.RID}} -o ${{github.workspace}}/output
 
     - name: Confirm build result files
       run: ls -R ${{github.workspace}}/output
+
+    - name: Zip up result
+      run: |
+        sudo apt-get update
+        sudo apt-get install zip
+        zip -r "Iconifier.zip" "${{github.workspace}}/output"
 
     - name: Get Static Secrets
       id: akeyless
@@ -189,7 +196,7 @@ jobs:
           --icon-size 80 \
           --icon "Iconifier" 250 100 \
           "${{env.MACOS_DMG_FILENAME}}" \
-          "${{github.workspace}}/output"
+          "${{github.workspace}}/Iconifier.zip"
 
     - name: Attach artifacts to workflow run
       uses: actions/upload-artifact@v4
