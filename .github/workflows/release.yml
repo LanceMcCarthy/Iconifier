@@ -228,6 +228,19 @@ jobs:
       - name: Confirm downloaded files
         run: ls -R
 
+      - name: Prepare zip files for release publishing
+        working-directory: ${{github.workspace}}/artifacts
+        run: |
+          sudo apt-get update
+          sudo apt-get install zip
+
+          for name in "Iconifier_win-x64" "Iconifier_win-arm64" "Iconifier_linux-x64" "Iconifier_linux-arm64" "Iconifier_osx-x64" "Iconifier_osx-arm64"; do
+              zip -r "$name.zip" "$name"
+          done
+
+      - name: Confirm zip files
+        run: ls | grep ".zip"
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
@@ -235,9 +248,9 @@ jobs:
           tag_name: "${{needs.shared-resources.outputs.app_version}}"
           fail_on_unmatched_files: true
           files: |
-            Iconifier_win-x64
-            Iconifier_win-arm64
-            Iconifier_linux-x64
-            Iconifier_linux-arm64
-            Iconifier_osx-x64
-            Iconifier_osx-arm64
+            Iconifier_win-x64.zip
+            Iconifier_win-arm64.zip
+            Iconifier_linux-x64.zip
+            Iconifier_linux-arm64.zip
+            Iconifier_osx-x64.zip
+            Iconifier_osx-arm64.zip
