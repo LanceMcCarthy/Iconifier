@@ -151,10 +151,6 @@ jobs:
     - name: Confirm build result files
       run: ls -R ${{github.workspace}}/output
 
-    - name: Zip up result
-      run: |
-        zip -r "Iconifier.zip" "./output"
-
     - name: Get Static Secrets
       id: akeyless
       uses: LanceMcCarthy/akeyless-action@v3
@@ -180,31 +176,43 @@ jobs:
         cd ${{github.workspace}}/output
         /usr/bin/codesign --force --verify --deep --verbose --sign "${{env.APPLE_CERTIFICATE_NAME}}" --options runtime -v "Iconifier"
 
-    - name: Store notarytool credentials
-      run: xcrun notarytool store-credentials ${{env.NOTARYTOOL_CREDENTIAL_NAME}} --apple-id ${{steps.akeyless.outputs.APPLE_ACCOUNT_EMAIL}} --team-id ${{env.APPLE_DEVELOPER_TEAM_ID}} --password ${{steps.akeyless.outputs.APPLE_ACCOUNT_APP_SPECIFIC_PASSWORD}}
+    # - name: Store notarytool credentials
+    #   run: xcrun notarytool store-credentials ${{env.NOTARYTOOL_CREDENTIAL_NAME}} --apple-id ${{steps.akeyless.outputs.APPLE_ACCOUNT_EMAIL}} --team-id ${{env.APPLE_DEVELOPER_TEAM_ID}} --password ${{steps.akeyless.outputs.APPLE_ACCOUNT_APP_SPECIFIC_PASSWORD}}
 
-    - name: Install tool (create-dmg)
-      run: brew install create-dmg
+    # - name: Install tool (create-dmg)
+    #   run: brew install create-dmg
 
-    # docs https://github.com/create-dmg/create-dmg
-    - name: Create, sign, notarize, and staple the DMG.
-      id: create-dmg
-      run: |
-        create-dmg \
-          --codesign "${{env.APPLE_CERTIFICATE_NAME}}" \
-          --notarize "${{env.NOTARYTOOL_CREDENTIAL_NAME}}" \
-          --volname "Iconifier v${{needs.shared-resources.app_version}}" \
-          --window-size 500 450 \
-          --icon-size 80 \
-          --icon "Iconifier.zip" 250 100 \
-          "${{env.MACOS_DMG_FILENAME}}" \
-          "${{github.workspace}}/Iconifier.zip"
+    # - name: Zip up result
+    #   run: |
+    #     zip -r "Iconifier.zip" "./output"
+
+    # # docs https://github.com/create-dmg/create-dmg
+    # - name: Create, sign, notarize, and staple the DMG.
+    #   id: create-dmg
+    #   run: |
+    #     create-dmg \
+    #       --codesign "${{env.APPLE_CERTIFICATE_NAME}}" \
+    #       --notarize "${{env.NOTARYTOOL_CREDENTIAL_NAME}}" \
+    #       --volname "Iconifier v${{needs.shared-resources.app_version}}" \
+    #       --window-size 500 450 \
+    #       --icon-size 80 \
+    #       --icon "Iconifier.zip" 250 100 \
+    #       "${{env.MACOS_DMG_FILENAME}}" \
+    #       "${{github.workspace}}/Iconifier.zip"
+
+    # - name: Attach artifacts to workflow run
+    #   uses: actions/upload-artifact@v4
+    #   with:     
+    #     name: "Iconifier_${{matrix.RID}}" 
+    #     path: ${{github.workspace}}/${{env.MACOS_DMG_FILENAME}}
+    #     if-no-files-found: error
+    #     retention-days: 30
 
     - name: Attach artifacts to workflow run
       uses: actions/upload-artifact@v4
       with:     
         name: "Iconifier_${{matrix.RID}}" 
-        path: ${{github.workspace}}/${{env.MACOS_DMG_FILENAME}}
+        path: ${{github.workspace}}/output
         if-no-files-found: error
         retention-days: 30
 
@@ -235,7 +243,6 @@ jobs:
         with:
           name: "${{needs.shared-resources.app_version}}"
           tag_name: "${{needs.shared-resources.app_version}}"
-          prerelease: true # DELETE ME
           fail_on_unmatched_files: true
           files: |
             Iconifier_win-x64.zip
