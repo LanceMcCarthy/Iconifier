@@ -218,7 +218,7 @@ jobs:
 
   create_release:
     name: Create Release
-    needs: [build_macos, build_windows, build_linux]
+    needs: [shared-resources,build_macos, build_windows, build_linux]
     if: ${{success()}}
     runs-on: ubuntu-latest
     steps:
