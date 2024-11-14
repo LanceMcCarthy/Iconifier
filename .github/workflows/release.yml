@@ -226,6 +226,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: Iconifier
+          path: ${{github.workspace}}/artifacts
+
+      - name: Confirm downloaded files
+        working-directory: ${{github.workspace}}/artifacts
+        run: ls -R
 
       - name: Install zip tools
         run: |
@@ -233,6 +238,7 @@ jobs:
           sudo apt-get install zip
 
       - name: Prepare zip files for release publishing
+        working-directory: ${{github.workspace}}/artifacts
         run: |
           for name in "Iconifier_win-x64" "Iconifier_win-arm64" "Iconifier_linux-x64" "Iconifier_linux-arm64" "Iconifier_osx-x64" "Iconifier_osx-arm64"; do
               zip -r "$name.zip" "$name"
@@ -245,9 +251,10 @@ jobs:
           tag_name: "${{needs.shared-resources.app_version}}"
           fail_on_unmatched_files: true
           files: |
-            Iconifier_win-x64.zip
-            Iconifier_win-arm64.zip
-            Iconifier_linux-x64.zip
-            Iconifier_linux-arm64.zip
-            Iconifier_osx-x64.zip
-            Iconifier_osx-arm64.zip
+            ${{github.workspace}}/artifacts/Iconifier_win-x64.zip
+            ${{github.workspace}}/artifacts/Iconifier_win-arm64.zip
+            ${{github.workspace}}/artifacts/Iconifier_linux-x64.zip
+            ${{github.workspace}}/artifacts/Iconifier_linux-arm64.zip
+            ${{github.workspace}}/artifacts/Iconifier_osx-x64.zip
+            ${{github.workspace}}/artifacts/Iconifier_osx-arm64.zip
+            ${{github.workspace}}/artifacts/Iconifier_linux-arm64
