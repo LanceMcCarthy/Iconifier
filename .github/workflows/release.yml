@@ -228,12 +228,13 @@ jobs:
       - name: Confirm downloaded files
         run: ls -R
 
-      - name: Prepare zip files for release publishing
-        working-directory: ${{github.workspace}}/artifacts
+      - name: Install zip tool
         run: |
           sudo apt-get update
           sudo apt-get install zip
 
+      - name: Zip up artifacts for release attachment
+        run: |
           for name in "Iconifier_win-x64" "Iconifier_win-arm64" "Iconifier_linux-x64" "Iconifier_linux-arm64" "Iconifier_osx-x64" "Iconifier_osx-arm64"; do
               zip -r "$name.zip" "$name"
           done
