@@ -248,6 +248,7 @@ jobs:
         with:
           name: "${{needs.shared-resources.outputs.app_version}}"
           tag_name: "${{needs.shared-resources.outputs.app_version}}"
+          generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
             Iconifier_win-x64.zip
@@ -256,3 +257,4 @@ jobs:
             Iconifier_linux-arm64.zip
             Iconifier_osx-x64.zip
             Iconifier_osx-arm64.zip
+          body: "This is v${{needs.shared-resources.outputs.app_version}} of the amazing Iconifier that was written in an hour 🫡."
