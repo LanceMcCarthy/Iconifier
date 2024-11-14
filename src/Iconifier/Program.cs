@@ -33,7 +33,7 @@ while (true)
 
     if (configRoot == null)
     {
-        Console.WriteLine("Exiting! Error deserializing the json, please check formatting against this example https://gist.github.com/LanceMcCarthy/63815c41569ad877f24121be679d3638");
+        Console.WriteLine("Exiting! Deserialization Error. the json is likely not formatted correctly, please see this example for reference: https://gist.github.com/LanceMcCarthy/63815c41569ad877f24121be679d3638");
         return;
     }
 
@@ -46,6 +46,12 @@ while (true)
 
 
     // ***** Phase 4 - Resize original and save a copy ***** //
+
+    if (configRoot.IconDefinitions == null)
+    {
+        Console.WriteLine("You have not defined any icon definitions, please see this example for reference: https://gist.github.com/LanceMcCarthy/63815c41569ad877f24121be679d3638");
+        return;
+    }
 
     foreach (var iconDef in configRoot.IconDefinitions)
     {

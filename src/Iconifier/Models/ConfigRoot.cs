@@ -5,5 +5,5 @@ namespace Iconifier.Models;
 public class ConfigRoot
 {
     [JsonPropertyName("icon_definitions")]
-    public List<IconDefinition> IconDefinitions { get; set; }
+    public List<IconDefinition>? IconDefinitions { get; set; }
 }
